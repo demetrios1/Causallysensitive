@@ -1,0 +1,16 @@
+Package: Causallysensitive
+Title: Indirect inference Machine Learning for causal inference sensitivity analysis
+Version: 0.0.0.9000
+Authors@R: 
+    person(given = "Demetrios",
+           family = "Papakostas",
+           role = c("aut", "cre"),
+           email = "dpapakos@asu.edu",
+           comment = c(ORCID = "YOUR-ORCID-ID"))
+Description: This package implements the indirect inference machine learning methodology from Do forecasts of bankruptcy cause bankruptcy? paper.  
+License: `use_mit_license()`, `use_gpl3_license()` or friends to
+    pick a license
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.1.9000
