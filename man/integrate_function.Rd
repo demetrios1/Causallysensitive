@@ -46,9 +46,10 @@ covariates=data.frame(x1,x2,x3,x4,x5,B, G)
 vars=c('x1','x2','x3','x4','x5')
 intframe=BARTpred(covariates, treat='G', Outcome='B',vars, mono=T)
 #pick a function to integrate over
+#here the standard deviation is chosen to match the generated data
 f=function(u){
-   dnorm(u, mean=0, sd=0.5)
- }
+ dnorm(u, mean=0, sd=sqrt(rho/(1-rho)))
+}
 treat_frame=integrate_function(intframe, constraint=T, f=f, n_cores=1)
 library(rpart)
 #merge the ites and covariates

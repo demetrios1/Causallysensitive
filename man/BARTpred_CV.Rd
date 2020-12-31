@@ -9,6 +9,7 @@ BARTpred_CV(
   treat = "G",
   Outcome = "B",
   vars,
+  mono = T,
   nd_post = 20,
   n_skip = 20,
   nfold = 5
@@ -22,6 +23,8 @@ BARTpred_CV(
 \item{Outcome}{string, name of outcome column}
 
 \item{vars}{list of names of columns of covariates}
+
+\item{mono}{Boolean, whether or not to use monotonicity constraint}
 
 \item{nd_post}{number of posterior draws to keep}
 
@@ -62,7 +65,8 @@ B=sapply(1:N, function(i)ifelse(sim_data[i,2]>=-1*gamma*G[i], 1,0))
 print(table(G,B))
 covariates=data.frame(x1,x2,x3,x4,x5,B, G)
 vars=c('x1','x2','x3','x4','x5')
-CV_pred=BARTpred_CV(covariates, treat='G', Outcome='B', vars=vars, nd_post=200, n_skip=500, nfold=5)
+CV_pred=BARTpred_CV(covariates, treat='G', Outcome='B', vars=vars,mono=T,
+ nd_post=200, n_skip=500, nfold=5)
 output=do.call('rbind', CV_pred$imp_frame)
 cc=ggrocs(list(PB1G0=roc(output$B[output$G==0],
                    output$BG0[output$G==0]),
@@ -72,8 +76,10 @@ cc=ggrocs(list(PB1G0=roc(output$B[output$G==0],
                         output$G1)),
          breaks = seq(0,1,0.1),
          tittle = "ROC perf. predicting our probs")
+#pick a function to integrate over
+#here the standard deviation is chosen to match the generated data
 f=function(u){
-dnorm(u, mean=0, sd=0.5)
+  dnorm(u, mean=0, sd=sqrt(rho/(1-rho)))
 }
 treat_frame=integrate_function(as.matrix(output), constraint=T, f=f, n_cores=1)
 }
