@@ -333,6 +333,7 @@ prediction_function=function(df, treat='G', Outcome='B',vars, model='random fore
 #' @param treat String of name of treatment column
 #' @param Outcome string, name of outcome column
 #' @param vars list of names of columns of covariates
+#' @param mono Boolean, whether or not to use monotonicity constraint
 #' @param nfold how many cross validation folds you want, integer value
 #' @param nd_post number of posterior draws to keep
 #' @param n_skip number of burn in samples
@@ -375,7 +376,8 @@ prediction_function=function(df, treat='G', Outcome='B',vars, model='random fore
 #' covariates=data.frame(x1,x2,x3,x4,x5,B, G)
 
 #' vars=c('x1','x2','x3','x4','x5')
-#' CV_pred=BARTpred_CV(covariates, treat='G', Outcome='B', vars=vars, nd_post=200, n_skip=500, nfold=5)
+#' CV_pred=BARTpred_CV(covariates, treat='G', Outcome='B', vars=vars,mono=T,
+#'  nd_post=200, n_skip=500, nfold=5)
 #' output=do.call('rbind', CV_pred$imp_frame)
 #' cc=ggrocs(list(PB1G0=roc(output$B[output$G==0],
 #'                    output$BG0[output$G==0]),
@@ -385,11 +387,13 @@ prediction_function=function(df, treat='G', Outcome='B',vars, model='random fore
 #'                         output$G1)),
 #'          breaks = seq(0,1,0.1),
 #'          tittle = "ROC perf. predicting our probs")
+#' #pick a function to integrate over
+#' #here the standard deviation is chosen to match the generated data
 #' f=function(u){
-#' dnorm(u, mean=0, sd=0.5)
+#'   dnorm(u, mean=0, sd=sqrt(rho/(1-rho)))
 #' }
 #' treat_frame=integrate_function(as.matrix(output), constraint=T, f=f, n_cores=1)
-BARTpred_CV=function(df, treat='G', Outcome='B',vars, nd_post=20, n_skip=20, nfold=5){
+BARTpred_CV=function(df, treat='G', Outcome='B',vars,mono=T, nd_post=20, n_skip=20, nfold=5){
   fold=nfold
   covtreat=df[df[treat]==1,]
   covcontrol=df[df[treat]==0,]
@@ -468,7 +472,8 @@ BARTpred_CV=function(df, treat='G', Outcome='B',vars, nd_post=20, n_skip=20, nfo
     xtest[[cv]]=df[c(test_index[[cv]],test_index_2[[cv]]), vars]
     x_train_0<-sapply(x_train_0, as.numeric)
     x_train_1<-sapply(x_train_1, as.numeric)
-
+  if(mono==T){
+    library(fastbart)
     bart_mono = monotone_bart(y = as.numeric(c(y_train1[[cv]], y_train0[[cv]])==1),
                               z = 1-c(rep(1, length(y_train1[[cv]])),
                                       rep(0, length(y_train0[[cv]]))),
@@ -484,6 +489,23 @@ BARTpred_CV=function(df, treat='G', Outcome='B',vars, nd_post=20, n_skip=20, nfo
     pred1[[cv]]=1-colMeans(bart_mono$pr0)
 
     pred2[[cv]]= 1-colMeans(bart_mono$pr1)
+  }else if(mono==F){
+    bart_fit_1=bart(x_train_0, y_train0[[cv]],xtest[[cv]],ndpost = nd_post, nskip = n_skip,ntree=100,
+                    verbose=T,usequants = TRUE,numcut = 1000)
+    bart_fit_2=bart(x_train_1, y_train1[[cv]],xtest[[cv]],ndpost = nd_post, nskip = n_skip,ntree=100,
+                    verbose=T,usequants = TRUE,numcut = 1000)
+    bart_fit=bart(x_train, y_train[[cv]],xtest[[cv]],ndpost = nd_post, nskip = n_skip,ntree=100,
+                  verbose=T,usequants = TRUE,numcut = 1000)
+
+
+    bart_train_pred_prob[[cv]]=colMeans(pnorm(bart_fit$yhat.train))
+    bart_test_pred_prob[[cv]]=colMeans(pnorm(bart_fit$yhat.test))
+
+    pred1[[cv]]=colMeans(pnorm(bart_fit_1$yhat.test))
+
+    pred2[[cv]]= colMeans(pnorm(bart_fit_2$yhat.test))
+
+  }
     true_test[[cv]]=df[c(test_index[[cv]],test_index_2[[cv]]), c(Outcome, treat)]
     imp_frame_2<-data.frame(true_test[[cv]], BG1=pred1[[cv]],
                                BG0=pred2[[cv]], G1=bart_test_pred_prob[[cv]])
