@@ -50,8 +50,10 @@ monotone_bart = function(y, z, x, xpred, nskip=5000, ndpost=5000, m = 50, n=N) {
   ################################################################################
   # MCMC
   ################################################################################
+  #the seed is set in the data generating process
+  # set.seed(1022)
 
-  set.seed(1022)
+  #set.seed(1022)
 
 
   xi = lapply(1:ncol(x), function(i) bcf:::.cp_quantile(x[,i]))
